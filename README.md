@@ -83,13 +83,13 @@ Mở Terminal tại thư mục `Extension/` và thực thi:
   ```bash
   ./gradlew clean jar
   ```
-  👉 Tệp đầu ra: `build/libs/tranlam-template-project.jar`
+  Tệp đầu ra: `build/libs/tranlam-template-project.jar`
 
 - **Sinh tự động tài liệu API Documentation (Javadoc chuẩn UTF-8)**:
   ```bash
   ./gradlew javadoc
   ```
-  👉 Bộ tài liệu HTML đầu ra: `build/docs/javadoc/index.html` (đã được đồng bộ sẵn tại [`docs/javadoc/index.html`](docs/javadoc/index.html) để lưu trữ trực tiếp trên kho mã nguồn Git).
+  Bộ tài liệu HTML đầu ra: `build/docs/javadoc/index.html` (đã được đồng bộ sẵn tại [`docs/javadoc/index.html`](docs/javadoc/index.html) để lưu trữ trực tiếp trên kho mã nguồn Git).
 
 ### 4.3. Nạp Extension vào Burp Suite
 1. Mở **Burp Suite**, chuyển tới tab **Extensions** $\rightarrow$ **Installed**.

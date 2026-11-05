@@ -1,0 +1,39 @@
+flowchart TD
+    Start(["1. Tester duyệt trang web mục tiêu qua Burp Browser"]) --> CollectBtn["2. Chọn Host & Nhấn '1. Collect Host Inputs'"]
+    
+    subgraph PHASE1["GIAI ĐOẠN 1: THU THẬP & KHỬ TRÙNG LẶP 3 PHỄU (HistoryCollector)"]
+        CollectBtn --> F1["Phễu 1: Lọc các bản ghi Proxy History khớp Host mục tiêu"]
+        F1 --> F2["Phễu 2: Tách cleanPath trước dấu '?'<br/>Loại bỏ 15 đuôi file tĩnh (.js, .css, .png, .jpg, .woff2...)"]
+        F2 --> F3["Phễu 3: Bóc tách tham số URL & BODY (ParamExtractor)<br/>Sinh chữ ký cấu trúc: METHOD | cleanPath | sortedParamNames"]
+        F3 --> Dedup["Ghi vào LinkedHashMap.put(signature, target)<br/>LUÔN GIỮ BẢN GHI MỚI NHẤT (bảo toàn Cookie/Session mới nhất)"]
+    end
+
+    Dedup --> SplitParam{"Endpoint có tham số<br/>hiển thị (>0 params)?"}
+    SplitParam -- "Không (0 params)" --> ZeroBucket["Ghi nhận vào nhóm 0-param<br/>(Chuẩn bị cho mô-đun Hidden Parameter Discovery)"]
+    SplitParam -- "Có (>=1 params)" --> SelectTable["Hiển thị lên Bảng '1. Injectable Inputs'<br/>Tester tích chọn tham số -> Nhấn '2. Start Scan'"]
+
+    subgraph PHASE2["GIAI ĐOẠN 2: THIẾT LẬP MẪU THAM CHIẾU KÉP (BaselineEngine - Tuần tự)"]
+        SelectTable --> CleanHdr["Gỡ bỏ 4 Header điều kiện Cache:<br/>If-Modified-Since, If-None-Match (hoa & thường)"]
+        CleanHdr --> ValidBase["Gửi lại BaseRequest gốc -> Thu 'Valid Baseline'<br/>(Status, Content-Type, ContentLength, LineCount, WordCount)"]
+        ValidBase --> ErrBase["Với từng Parameter được chọn:<br/>Tiêm chuỗi thăm dò 'pt_nonexistent_ref_<6_digits>' (25 ký tự)<br/>-> Thu 'Error Baseline' & Đếm số lần phản xạ (r lần)"]
+    end
+
+    subgraph PHASE3["GIAI ĐOẠN 3: SINH BIẾN THỂ & BẮN ĐA LUỒNG (ScanManager & RequestMutator)"]
+        ErrBase --> CtxExpand["Nạp danh sách Payload (Built-in / File .txt)<br/>+ Sinh biến thể ngữ cảnh qua ContextInputBuilder"]
+        CtxExpand --> ThreadPool["Đẩy tác vụ vào FixedThreadPool (PT-Worker-1..N)<br/>RequestMutator.mutateParameter():<br/>- URL: giữ nguyên chuỗi payload<br/>- BODY: chỉ thay '&' -> '%26' và '=' -> '%3D'"]
+    end
+
+    subgraph PHASE4["GIAI ĐOẠN 4: PHÂN TÍCH PHẢN HỒI 2 LỚP (ResponseAnalyzer.evaluate)"]
+        ThreadPool --> StepA{"LỚP 1 (Bước A):<br/>Khớp dấu hiệu mục tiêu<br/>(Signature Match)?"}
+        StepA -- "Khớp cấu trúc /etc/passwd<br/>hoặc win.ini" --> FlagNotable1["Gán NOTABLE<br/>'Signature Match: Structured system/config file pattern'"]
+        
+        StepA -- "Không khớp" --> StepB{"LỚP 2 (Bước B):<br/>Khớp với Error Baseline<br/>(đã bù độ dài phản xạ)?"}
+        StepB -- "Cùng Status + Cùng nhóm MIME +<br/>|Len - ExpectedErrLen| <= errTol" --> FlagNormal1["Gán NORMAL<br/>'Matches parameter error baseline'"]
+        
+        StepB -- "Khác Error Baseline" --> StepC{"LỚP 2 (Bước C):<br/>Khớp với Valid Baseline?"}
+        StepC -- "Cùng Status + Cùng nhóm MIME +<br/>|Len - ValidLen| <= validTol" --> FlagNormal2["Gán NORMAL<br/>'Matches original valid baseline'"]
+        
+        StepC -- "Khác cả 2 Baseline" --> StepD["LỚP 2 (Bước D):<br/>Gán NOTABLE (Behavioral Anomaly)<br/>Ghi rõ các chỉ số lệch (Status, MIME, Length%, Lines, Words)"]
+    end
+
+    FlagNotable1 & FlagNormal1 & FlagNormal2 & StepD --> UIUpdate["Cập nhật thời gian thực lên Bảng '2. Scan Results'<br/>Click dòng kết quả -> Đối chiếu trực tiếp trên '3. Evidence Inspector'"]

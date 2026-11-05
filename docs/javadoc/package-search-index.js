@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"ptassistant"},{"l":"ptassistant.collector"},{"l":"ptassistant.engine"},{"l":"ptassistant.model"},{"l":"ptassistant.ui"}];updateSearchResults();

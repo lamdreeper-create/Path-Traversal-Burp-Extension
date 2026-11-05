@@ -1,0 +1,225 @@
+classDiagram
+    direction TB
+
+    class Extension {
+        -BaselineEngine baselineEngine
+        -TestInputManager testInputManager
+        -MainTabPanel mainTabPanel
+        -ScanManager scanManager
+        +initialize(MontoyaApi) void
+        -extractRequest(ContextMenuEvent) HttpRequest
+        -logBoth(MontoyaApi, String) void
+    }
+
+    class MainTabPanel {
+        -MontoyaApi api
+        -TestInputManager testInputManager
+        -SelectableInputTableModel inputTableModel
+        -ResultsTableModel resultsTableModel
+        -HttpRequestEditor sentRequestEditor
+        -HttpResponseEditor receivedResponseEditor
+        -HttpResponseEditor baselineResponseEditor
+        -JDialog logDialog
+        +updateHostList(List~String~, String) void
+        +loadDiscoveredTargets(String, List~EndpointTarget~) void
+        +getSelectedTargetsForScan() List~EndpointTarget~
+        +addScanResultRow(ScanResultItem) void
+        +updateProgress(int, int, int) void
+        +setRunningState(boolean) void
+        +appendLog(String) void
+        +disposeAuxWindows() void
+    }
+
+    class SelectableInputTableModel {
+        -List~InputRow~ rows
+        +setTargets(List~EndpointTarget~) void
+        +selectAll() void
+        +deselectAll() void
+        +selectByType(HttpParameterType) void
+        +buildSelectedEndpointTargets() List~EndpointTarget~
+        +getRowCount() int
+        +getColumnCount() int
+    }
+
+    class ResultsTableModel {
+        -List~ScanResultItem~ items
+        +addResult(ScanResultItem) int
+        +getItemAtModelRow(int) ScanResultItem
+        +clear() void
+        +getRowCount() int
+        +getColumnCount() int
+    }
+
+    class HistoryCollector {
+        -Set~String~ STATIC_EXTENSIONS$
+        +collectDistinctHosts(MontoyaApi)$ List~String~
+        +collectByHost(MontoyaApi, String)$ List~EndpointTarget~
+        +collectFromHistory(MontoyaApi, boolean)$ List~EndpointTarget~
+        +extractCleanPath(HttpRequest)$ String
+        +buildParamSignature(List~TargetParameter~)$ String
+    }
+
+    class ParamExtractor {
+        +extractSupportedParams(HttpRequest)$ List~TargetParameter~
+    }
+
+    class ScanManager {
+        -MontoyaApi api
+        -BaselineEngine baselineEngine
+        -TestInputManager testInputManager
+        -MainTabPanel mainTabPanel
+        -AtomicBoolean scanning
+        -volatile boolean stopRequested
+        -volatile ExecutorService workerPool
+        -volatile Thread coordinatorThread
+        -List~ScanResultItem~ collectedResults
+        +startBatchScan(List~EndpointTarget~, String) void
+        -runCoordinatorLoop(List~EndpointTarget~, String) void
+        -executeSingleTestTask(EndpointTarget, TargetParameter, String, int, AtomicInteger, int, int) void
+        +stopScan() void
+        +shutdown() void
+        +isRunning() boolean
+    }
+
+    class BaselineEngine {
+        -String NON_EXISTENT_PREFIX$
+        +captureFreshBaseline(MontoyaApi, HttpRequest) BaselineProfile
+        +captureErrorBaseline(MontoyaApi, HttpRequest, TargetParameter) BaselineProfile
+    }
+
+    class TestInputManager {
+        -List~String~ DEFAULT_BUILT_IN_INPUTS$
+        -List~String~ currentInputs
+        -String sourceDescription
+        +loadFromFile(File) int
+        +resetToDefault() void
+        +getInputs() List~String~
+        +getSourceDescription() String
+    }
+
+    class ContextInputBuilder {
+        -Pattern VALID_EXTENSION_PATTERN$
+        +buildInputsForParam(TargetParameter, List~String~, boolean, boolean)$ List~String~
+    }
+
+    class RequestMutator {
+        +mutateParameter(HttpRequest, TargetParameter, String)$ HttpRequest
+    }
+
+    class ResponseAnalyzer {
+        -Pattern POSIX_COLON_RECORD_PATTERN$
+        -Pattern SYSTEM_INI_SECTION_PATTERN$
+        +evaluate(ScanResultItem, BaselineProfile, BaselineProfile)$ void
+        -matchesStructuredSystemConfigPattern(String)$ boolean
+        -isSameContentTypeGroup(String, String)$ boolean
+    }
+
+    class EndpointTarget {
+        -HttpRequest baseRequest
+        -List~TargetParameter~ parameters
+        -volatile BaselineProfile baseline
+        -Map~TargetParameter, BaselineProfile~ errorBaselines
+        +getBaseRequest() HttpRequest
+        +getParameters() List~TargetParameter~
+        +getBaseline() BaselineProfile
+        +setBaseline(BaselineProfile) void
+        +getErrorBaseline(TargetParameter) BaselineProfile
+        +setErrorBaseline(TargetParameter, BaselineProfile) void
+        +hasVisibleParams() boolean
+    }
+
+    class TargetParameter {
+        -String name
+        -String originalValue
+        -HttpParameterType type
+        +getName() String
+        +getOriginalValue() String
+        +getType() HttpParameterType
+        +equals(Object) boolean
+        +hashCode() int
+    }
+
+    class BaselineProfile {
+        -HttpResponse rawResponse
+        -int statusCode
+        -String contentType
+        -int contentLength
+        -int lineCount
+        -int wordCount
+        -long responseTimeMs
+        -int probeLength
+        -int reflectionCount
+        +getRawResponse() HttpResponse
+        +getStatusCode() int
+        +getContentType() String
+        +getContentLength() int
+        +getLineCount() int
+        +getWordCount() int
+        +getProbeLength() int
+        +getReflectionCount() int
+        +toSummaryString() String
+    }
+
+    class ScanResultItem {
+        -int rowIndex
+        -String workerName
+        -EndpointTarget endpoint
+        -String endpointLabel
+        -TargetParameter parameter
+        -String testInput
+        -HttpRequest sentRequest
+        -HttpResponse receivedResponse
+        -int statusCode
+        -String contentType
+        -int contentLength
+        -int lineCount
+        -int wordCount
+        -double lengthDiffPercent
+        -long responseTimeMs
+        -volatile String flag
+        -volatile String reason
+        +getFlag() String
+        +setFlag(String) void
+        +getReason() String
+        +setReason(String) void
+        +getLengthDiffPercent() double
+    }
+
+    Extension *-- MainTabPanel : initializes
+    Extension *-- ScanManager : initializes
+    Extension *-- BaselineEngine : initializes
+    Extension *-- TestInputManager : initializes
+    Extension ..> HistoryCollector : calls
+    Extension ..> ParamExtractor : calls
+
+    MainTabPanel *-- SelectableInputTableModel : contains
+    MainTabPanel *-- ResultsTableModel : contains
+    MainTabPanel o-- TestInputManager : configures
+
+    HistoryCollector ..> ParamExtractor : delegates
+    HistoryCollector ..> EndpointTarget : creates
+    ParamExtractor ..> TargetParameter : creates
+
+    SelectableInputTableModel o-- EndpointTarget : displays
+    ResultsTableModel o-- ScanResultItem : stores
+
+    ScanManager o-- BaselineEngine : uses
+    ScanManager o-- TestInputManager : reads
+    ScanManager o-- MainTabPanel : updates UI
+    ScanManager ..> ContextInputBuilder : calls
+    ScanManager ..> RequestMutator : calls
+    ScanManager ..> ResponseAnalyzer : calls
+    ScanManager *-- ScanResultItem : collects
+
+    BaselineEngine ..> RequestMutator : calls
+    BaselineEngine ..> BaselineProfile : creates
+    ContextInputBuilder ..> TargetParameter : inspects
+    RequestMutator ..> TargetParameter : mutates
+    ResponseAnalyzer ..> ScanResultItem : evaluates
+    ResponseAnalyzer ..> BaselineProfile : compares
+
+    EndpointTarget "1" *-- "0..*" TargetParameter : contains
+    EndpointTarget "1" o-- "0..1" BaselineProfile : validBaseline
+    EndpointTarget "1" o-- "0..*" BaselineProfile : errorBaselines
+    ScanResultItem "*" --> "1" EndpointTarget : references
+    ScanResultItem "*" --> "1" TargetParameter : tests

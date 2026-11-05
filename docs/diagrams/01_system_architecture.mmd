@@ -1,0 +1,58 @@
+flowchart TB
+    subgraph BURP["Nền tảng Burp Suite (Montoya API 2026.7)"]
+        PROXY["Proxy HTTP History<br/>api.proxy().history()"]
+        HTTP["Montoya HTTP Engine<br/>api.http().sendRequest()"]
+        REPEATER["Burp Repeater<br/>api.repeater().sendToRepeater()"]
+        EDITORS["Native Message Editors<br/>HttpRequestEditor / HttpResponseEditor"]
+    end
+
+    subgraph UI["Tầng Giao diện Người dùng (ptassistant.ui)"]
+        EXT["Extension.java<br/>Điểm khởi đầu & Quản lý vòng đời"]
+        MAINTAB["MainTabPanel.java<br/>Khung làm việc 3 tầng & Cửa sổ Mini Log"]
+        INPUT_TBL["SelectableInputTableModel.java<br/>Bảng chọn tham số đầu vào (7 cột)"]
+        RES_TBL["ResultsTableModel.java<br/>Bảng kết quả thời gian thực (13 cột)"]
+    end
+
+    subgraph COLLECTOR["Tầng Thu thập & Bóc tách (ptassistant.collector)"]
+        HIST["HistoryCollector.java<br/>Lọc 3 phễu & Khử trùng lặp Endpoint"]
+        EXTRACTOR["ParamExtractor.java<br/>Trích xuất tham số URL & BODY"]
+    end
+
+    subgraph ENGINE["Tầng Động cơ Kiểm thử & Phân tích (ptassistant.engine)"]
+        SCAN_MGR["ScanManager.java<br/>Coordinator-Thread & FixedThreadPool"]
+        INPUT_MGR["TestInputManager.java<br/>Quản lý Payload Built-in & File .txt"]
+        CTX_BUILDER["ContextInputBuilder.java<br/>Sinh biến thể Preserve Prefix & Append Ext"]
+        BASE_ENG["BaselineEngine.java<br/>Thiết lập Valid Baseline & Error Baseline"]
+        MUTATOR["RequestMutator.java<br/>Gỡ Header Cache 304 & Đột biến tham số"]
+        ANALYZER["ResponseAnalyzer.java<br/>Phân tích 2 lớp: Signature & Dual-Baseline"]
+    end
+
+    subgraph MODEL["Tầng Mô hình Dữ liệu In-Memory (ptassistant.model)"]
+        EP_TARGET["EndpointTarget.java"]
+        TARGET_PARAM["TargetParameter.java"]
+        BASE_PROF["BaselineProfile.java"]
+        SCAN_ITEM["ScanResultItem.java"]
+    end
+
+    EXT --> MAINTAB
+    EXT --> SCAN_MGR
+    PROXY --> HIST
+    HIST --> EXTRACTOR
+    EXTRACTOR --> EP_TARGET
+    EP_TARGET --> TARGET_PARAM
+    EP_TARGET --> INPUT_TBL
+    MAINTAB --> INPUT_TBL
+    MAINTAB --> RES_TBL
+    MAINTAB --> EDITORS
+    MAINTAB --> REPEATER
+    INPUT_TBL --> SCAN_MGR
+    SCAN_MGR --> INPUT_MGR
+    SCAN_MGR --> CTX_BUILDER
+    SCAN_MGR --> BASE_ENG
+    SCAN_MGR --> MUTATOR
+    BASE_ENG --> HTTP
+    MUTATOR --> HTTP
+    BASE_ENG --> BASE_PROF
+    SCAN_MGR --> ANALYZER
+    ANALYZER --> SCAN_ITEM
+    SCAN_ITEM --> RES_TBL

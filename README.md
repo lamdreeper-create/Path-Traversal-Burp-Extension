@@ -1,104 +1,113 @@
-# Extension Template Project
+# Path Traversal Assistant (PT Assistant) — Burp Suite Extension
 
-This project was created by PortSwigger to help you quickly start developing extensions in Java.
-
-## Contents
-* [Before you start](#before-you-start)
-* [Writing your extension](#writing-your-extension)
-* [Building your extension](#building-your-extension)
-* [Loading the JAR file into Burp](#loading-the-jar-file-into-burp)
-* [Sharing your extension](#sharing-your-extension)
-
-
-## Before you start
-
-Before you begin development, make sure that your project's JDK is set to version "21".
-
-
-## Writing your extension
-
-To begin development, open the [Extension.java](src/main/java/Extension.java) file. It includes an example of setting your extension's name, which you can customize with your own logic.
-
-The template contains the following components for building your extension:
-
-* The `initialize` method. This is the entry point for your extension. It is called when the extension is loaded and receives a [montoyaApi](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html) argument, which provides access to all Montoya API features.
-* The `Extension` class. This implements the BurpExtension interface, so your extension is recognized and loaded by Burp.
-
-#### Related resources
-
-* For more information on Montoya API features, see the [JavaDoc](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html).
-* To explore example extensions, visit our [GitHub repository](https://github.com/PortSwigger/burp-extensions-montoya-api-examples).
-* For more information on creating extensions, see our [documentation](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating).
-* For a beginner tutorial, see [Writing your first extension](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/first-extension).
-* If you have any questions or need help from the community, join our [Discord channel](https://discord.com/channels/1159124119074381945/1164175825474686996).
-
-### Vibe Coding Your Extension with AI
-
-You can use an LLM to help you write your extension. To support this, we've included a [`CLAUDE.md`](./CLAUDE.md) file and supporting [documentation](./docs) that provide essential context for the model.
-
-#### Vibe Coding with Claude Code
-
-To use this file with Claude Code:
-
-1. Open a terminal and navigate to the `ExtensionTemplateProject` folder.
-2. Run Claude Code using the following command: `claude`.
-3. Prompt Claude to create some code for your extension.
-
-Claude should automatically read the contents of the `ExtensionTemplateProject` folder, including the `CLAUDE.md` file, then create draft code for you to review. If you think it hasn't read the `CLAUDE.md` file, directly prompt it to do so before continuing.
-
-#### Vibe Coding with Other LLMs
-
-If you're using an LLM other than Claude Code, prompt the LLM to read the `CLAUDE.md` file and supporting documentation from the `docs` folder, or provide their contents as part of your context window.
+> **Nền tảng**: Java 21 | Gradle 8.x | Burp Suite Montoya API `2026.7`
 
 ---
 
-## Building your extension
+## 1. Giới thiệu Tổng quan (Project Overview)
 
-When you're ready to test and use your extension, follow these steps to build a JAR file and load it into Burp.
+**Path Traversal Assistant (PT Assistant)** là một tiện ích mở rộng (Extension) tích hợp trực tiếp vào **Burp Suite**, hỗ trợ kiểm thử viên (Pentester) tự động hóa quy trình thu thập điểm chèn, thiết lập trạng thái tham chiếu kép (*Dual-Baseline*), tiêm chuỗi kiểm thử đa luồng và sàng lọc sơ bộ các phản hồi bất thường đối với lỗ hổng **Path Traversal / Local File Inclusion (LFI)**.
 
-### Building the JAR file
-
-To build the JAR file, run the following command in the root directory of this project:
-
-* For UNIX-based systems: `./gradlew jar`
-* For Windows systems: `gradlew jar`
-
-If successful, the JAR file is saved to `<project_root_directory>/build/libs/<project_name>.jar`. If the build fails, errors are shown in the console. By default, the project name is `extension-template-project`. You can change this in the [settings.gradle.kts](./settings.gradle.kts) file.
-
-
-## Loading the JAR file into Burp
-
-To load the JAR file into Burp:
-
-1. In Burp, go to **Extensions > Installed**.
-2. Click **Add**.
-3. Under **Extension details**, click **Select file**.
-4. Select the JAR file you just built, then click **Open**.
-5. [Optional] Under **Standard output** and **Standard error**, choose where to save output and error messages.
-6. Click **Next**. The extension is loaded into Burp.
-7. Review any messages displayed in the **Output** and **Errors** tabs.
-8. Click **Close**.
-
-Your extension is loaded and listed in the **Burp extensions** table. You can test its behavior and make changes to the code as necessary.
-
-### Reloading the JAR file in Burp
-
-If you make changes to the code, you must rebuild the JAR file and reload your extension in Burp for the changes to take effect.
-
-To rebuild the JAR file, follow the steps for [building the JAR file](#building-the-jar-file).
-
-To quickly reload your extension in Burp:
-
-1. In Burp, go to **Extensions > Installed**.
-2. Hold `Ctrl` or `⌘`, and select the **Loaded** checkbox next to your extension.
+### Triết lý thiết kế cốt lõi
+- **Tự động hóa các khâu lặp lại**: Thu thập hàng loạt request từ `Proxy HTTP History` theo tên miền mục tiêu, tự động lọc bỏ tài nguyên tĩnh và khử trùng lặp cấu trúc endpoint.
+- **Chống nhiễu trang báo lỗi giả (Soft-404)**: Thiết lập đồng thời **Valid Baseline** (phản hồi gốc hợp lệ) và **Error Baseline** (phản hồi khi truyền tên tệp giả định không tồn tại).
+- **Hỗ trợ quyết định minh bạch**: Công cụ khoanh vùng và gắn cờ `NOTABLE` (Đáng chú ý) hoặc `NORMAL` (Bình thường) kèm lý do định lượng cụ thể; kiểm thử viên trực tiếp đối chiếu Raw Request/Response trên trình soạn thảo nguyên bản của Burp Suite để đưa ra kết luận cuối cùng.
 
 ---
 
-## Sharing your extension
+## 2. Kiến trúc Hệ thống & Cấu trúc Thư mục (System Architecture)
 
-Once you've built your extension, we'd love to see what you've created!
+Mã nguồn gồm **16 lớp (classes)** được phân tách thành 4 gói chức năng độc lập:
 
-Share your extension on our [PortSwigger Discord](https://discord.com/channels/1159124119074381945/1164175825474686996) #extensions channel to get feedback, showcase your work, and connect with other developers.
-Then take it to the next level by submitting your extension to the BApp store, making it available to the community of 80,000+ users worldwide.
+```text
+Extension/
+├── build.gradle.kts                  # Cấu hình biên dịch Java 21, Montoya API 2026.7 & Javadoc UTF-8
+├── settings.gradle.kts               # Định danh dự án Gradle
+└── src/main/java/ptassistant/
+    ├── Extension.java                # Điểm khởi chạy (Entry Point), đăng ký Tab UI, Context Menu & Unload Hook
+    ├── collector/                    # MODULE THU THẬP & BÓC TÁCH THAM SỐ
+    │   ├── HistoryCollector.java     # Thu thập Proxy History qua 3 phễu lọc & khử trùng lặp cấu trúc
+    │   └── ParamExtractor.java       # Trích xuất tham số URL Query & POST Body (x-www-form-urlencoded)
+    ├── engine/                       # MODULE ĐỘNG CƠ KIỂM THỬ & PHÂN TÍCH ĐA LUỒNG
+    │   ├── BaselineEngine.java       # Thiết lập Valid Baseline & Error Baseline cho từng tham số
+    │   ├── ContextInputBuilder.java  # Sinh biến thể ngữ cảnh (Preserve Prefix & Append Extension %00)
+    │   ├── RequestMutator.java       # Gỡ Header Cache 304 & tiêm payload an toàn không làm hỏng encoding
+    │   ├── ResponseAnalyzer.java     # Bộ phân tích phản hồi 2 lớp (Signature Match & Dual-Baseline Anomaly)
+    │   ├── ScanManager.java          # Điều phối viên (Coordinator-Thread) & Hồ luồng (PT-Worker-1..N)
+    │   └── TestInputManager.java     # Quản lý nạp danh sách payload (Built-in & Custom Wordlist .txt)
+    ├── model/                        # MODULE MÔ HÌNH DỮ LIỆU IN-MEMORY
+    │   ├── BaselineProfile.java      # Lưu trữ Status, Content-Type, Length, Lines, Words & số lần phản xạ
+    │   ├── EndpointTarget.java       # Đại diện một Endpoint duy nhất kèm danh sách tham số & Baseline
+    │   ├── ScanResultItem.java       # Bản ghi kết quả từng lượt bắn kiểm thử và độ lệch Diff %
+    │   └── TargetParameter.java      # Đại diện một tham số mục tiêu (tên, giá trị gốc, vị trí URL/BODY)
+    └── ui/                           # MODULE GIAO DIỆN NGƯỜI DÙNG (SWING)
+        ├── MainTabPanel.java         # Giao diện chính 3 tầng + Evidence Inspector + Mini Log Window
+        ├── ResultsTableModel.java    # Mô hình bảng kết quả 13 cột thời gian thực (hỗ trợ Sort & Filter)
+        └── SelectableInputTableModel.java # Mô hình bảng chọn linh hoạt 1 / nhiều / tất cả tham số
+```
 
-For guidance on the submission process, see [Submitting extensions to the BApp store](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/bapp-store-submitting-extensions).
+---
+
+## 3. Luồng Hoạt động 4 Giai đoạn (End-to-End Pipeline)
+
+1. **Giai đoạn 1 — Thu thập & Khử trùng lặp 3 Phễu (`HistoryCollector` & `ParamExtractor`)**:
+   - **Phễu 1**: Lọc các gói tin trong `Proxy HTTP History` theo Host mục tiêu hoặc phạm vi `In-Scope`.
+   - **Phễu 2**: Loại bỏ 15 định dạng tài nguyên tĩnh (`.js`, `.css`, `.png`, `.jpg`, `.woff2`...) và bóc tách các tham số thuộc 2 miền dữ liệu: `URL Query Parameter` và `POST Body Parameter (application/x-www-form-urlencoded)`.
+   - **Phễu 3**: Tạo chữ ký cấu trúc `METHOD | cleanPath | sortedParamNames` và sử dụng `LinkedHashMap` để khử trùng lặp, **luôn giữ lại bản ghi mới nhất** nhằm đảm bảo Cookie/Session còn hiệu lực.
+2. **Giai đoạn 2 — Thiết lập Mẫu Tham chiếu Kép (`BaselineEngine`)**:
+   - Gỡ bỏ các header điều kiện bộ nhớ đệm (`If-Modified-Since`, `If-None-Match`) để tránh phản hồi rỗng `304 Not Modified`.
+   - Gửi lại request gốc để ghi nhận **Valid Baseline** (`Status Code`, `Content-Type`, `Content-Length`, `Line Count`, `Word Count`).
+   - Gửi chuỗi thăm dò không tồn tại (`pt_nonexistent_ref_<6_digits>`) vào từng tham số để ghi nhận **Error Baseline** và đếm số lần chuỗi thăm dò bị phản xạ ($r$ lần) trong thân phản hồi lỗi.
+3. **Giai đoạn 3 — Sinh Biến thể Ngữ cảnh & Kiểm thử Đa luồng (`ScanManager` & `RequestMutator`)**:
+   - Hỗ trợ nạp danh sách payload tích hợp sẵn (*Built-in*) hoặc nạp tệp từ điển ngoài (`.txt` từ *SecLists*), kết hợp tùy chọn giữ tiền tố thư mục gốc (`Preserve Prefix`) và nối phần mở rộng kèm Null-byte (`Append Ext`).
+   - Thực thi gửi bất đồng bộ qua `FixedThreadPool` (`PT-Worker-1..N`) với độ trễ `Delay (ms)` tùy chỉnh và cơ chế dừng an toàn tức thì (`Stop`).
+4. **Giai đoạn 4 — Phân tích Phản hồi 2 Lớp (`ResponseAnalyzer`)**:
+   - **Lớp 1 (Target Signature Match)**: Kiểm tra dấu hiệu cấu trúc tệp hệ thống đích (`/etc/passwd`, `win.ini`). Nếu khớp $\rightarrow$ Gán cờ `NOTABLE`.
+   - **Lớp 2 (Dual-Baseline Behavioral Anomaly)**:
+     - Đối chiếu với `Error Baseline` (đã cộng bù độ dài chuỗi phản xạ $\hat{L}_{\text{err}}(P) = L_{\text{err}} + r \cdot (\text{len}(P) - \text{len}(P_{\text{probe}}))$). Nếu khớp $\rightarrow$ Gán cờ `NORMAL`.
+     - Đối chiếu với `Valid Baseline`. Nếu khớp $\rightarrow$ Gán cờ `NORMAL`.
+     - Nếu phản hồi **khác biệt với cả hai mẫu chuẩn** $\rightarrow$ Gán cờ `NOTABLE (Behavioral Anomaly)` và ghi rõ chỉ số biến thiên (`Status`, `Content-Type`, `Length Diff %`, `Lines`, `Words`).
+
+---
+
+## 4. Hướng dẫn Biên dịch & Cài đặt (Build & Installation)
+
+### 4.1. Yêu cầu môi trường
+- **Java Development Kit (JDK)**: Phiên bản **21** trở lên.
+- **Burp Suite**: Phiên bản Community hoặc Professional (hỗ trợ Montoya API `2026.7`).
+
+### 4.2. Các lệnh biên dịch
+Mở Terminal tại thư mục `Extension/` và thực thi:
+
+- **Đóng gói tệp `.jar` để nạp vào Burp Suite**:
+  ```bash
+  ./gradlew clean jar
+  ```
+  👉 Tệp đầu ra: `build/libs/tranlam-template-project.jar`
+
+- **Sinh tự động tài liệu API Documentation (Javadoc chuẩn UTF-8)**:
+  ```bash
+  ./gradlew javadoc
+  ```
+  👉 Bộ tài liệu HTML đầu ra: `build/docs/javadoc/index.html` (đã được đồng bộ sẵn tại [`docs/javadoc/index.html`](docs/javadoc/index.html) để lưu trữ trực tiếp trên kho mã nguồn Git).
+
+### 4.3. Nạp Extension vào Burp Suite
+1. Mở **Burp Suite**, chuyển tới tab **Extensions** $\rightarrow$ **Installed**.
+2. Nhấn nút **Add** $\rightarrow$ Tại mục **Extension type** chọn **Java**.
+3. Chọn tệp `Extension/build/libs/tranlam-template-project.jar` vừa biên dịch $\rightarrow$ Nhấn **Next**.
+4. Khi thông báo `Path Traversal Assistant loaded successfully` xuất hiện trong tab **Output**, tab làm việc **PT Assistant** sẽ hiển thị trên thanh công cụ chính của Burp Suite.
+
+---
+
+## 5. Hướng dẫn Sử dụng Nhanh (Quick Start Guide)
+
+1. **Thu thập Endpoint**:
+   - Duyệt trang web mục tiêu trên trình duyệt tích hợp của Burp Suite.
+   - Mở tab **PT Assistant**, chọn tên miền mục tiêu tại ô **Target Host** (hoặc bấm `Refresh`), sau đó nhấn **`1. Collect Host Inputs`** (hoặc click chuột phải vào bất kỳ request nào trong Proxy/Repeater và chọn **`Send to PT Assistant`**).
+2. **Chọn Tham số & Cấu hình Payload**:
+   - Trong bảng **1. Injectable Inputs**, tích chọn một, nhiều hoặc toàn bộ tham số cần kiểm thử.
+   - Chọn nguồn payload (**Built-in** hoặc bấm **Load .txt...** để nạp tệp wordlist SecLists), điều chỉnh số luồng (**Threads**), độ trễ (**Delay ms**) và các tùy chọn ngữ cảnh (**Preserve Prefix**, **Append Ext**).
+3. **Thực thi Quét & Xác minh Minh chứng**:
+   - Nhấn **`2. Start Scan`** để hệ thống tự động lấy Baseline kép và bắn kiểm thử đa luồng.
+   - Bật bộ lọc **`Only NOTABLE`** phía trên bảng **2. Scan Results** để lọc nhanh các phản hồi bất thường.
+   - Click vào từng dòng kết quả để đối chiếu trực tiếp **Sent Request**, **Received Response** và **Baseline Response** tại khung **3. Evidence Inspector** bên dưới, hoặc nhấn **`Send to Repeater`** để khai thác sâu hơn.
